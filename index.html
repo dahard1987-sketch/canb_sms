@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>플레인 텍스트 → Excel 변환기</title>
 
-  <!-- Excel 파일 생성을 위한 SheetJS -->
-  <script type="text/javascript" nonce="2e46bc80919b48d9b787a02d81c" src="//local.adguard.org?ts=1784958241767&amp;type=content-script&amp;dmn=chatgpt.com&amp;url=https%3A%2F%2Fchatgpt.com%2Fbackend-api%2Festuary%2Fcontent%3Fid%3Dfile_000000004a908207aa774f730609b871%26fn%3Dplain_text_to_excel.html%26cd%3Dattachment%26ts%3D495822%26p%3Dfs%26cid%3D1%26sig%3D525f441547bc68ee573be884045f2239072c49fa0ea9bd008e5cee718fa4ea23%26v%3D0&amp;app=com.google.Chrome&amp;css=2&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1&amp;stealth=1&amp;st-push&amp;st-loc&amp;st-dnt&amp;st-1pcttl=4320"></script><script type="text/javascript" nonce="2e46bc80919b48d9b787a02d81c" src="//local.adguard.org?ts=1784958241767&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
     :root {
@@ -96,6 +95,11 @@
       padding: 0 11px;
       border: 1px solid #bfc4cc;
       background: #fff;
+    }
+
+    input[readonly] {
+      background: #f3f4f6;
+      color: #555;
     }
 
     button {
@@ -205,9 +209,11 @@
 <body>
   <main>
     <h1>플레인 텍스트 → Excel 변환기</h1>
+
     <p class="description">
-      탭으로 구분된 텍스트를 붙여 넣으면 A열은 학생코드, B열은 sub1,
-      C열은 sub2로 저장합니다. 큰따옴표 안의 줄바꿈은 한 셀 안에 그대로 유지됩니다.
+      탭으로 구분된 텍스트를 붙여 넣으면 첫 번째 값은 A열,
+      두 번째 값은 B열, 세 번째 값은 C열에 저장됩니다.
+      큰따옴표 안의 줄바꿈은 하나의 셀 안에 그대로 유지됩니다.
     </p>
 
     <section class="panel">
@@ -218,12 +224,19 @@
 CB00031594	"[캔비어학원] 학생 숙제 리포트입니다.
 
 여러 줄의 내용도 같은 셀에 들어갑니다."
-CB00003100	"두 번째 학생 내용"'></textarea>
+CB00003100	"두 번째 학생 내용"'
+      ></textarea>
 
       <div class="options">
         <label>
           파일 이름
-          <input id="fileName" type="text" value="학생문자_변환" />
+          <input
+            id="fileName"
+            type="text"
+            value=""
+            placeholder="다운로드할 때 자동 생성"
+            readonly
+          />
         </label>
 
         <label>
@@ -234,14 +247,24 @@ CB00003100	"두 번째 학생 내용"'></textarea>
           </select>
         </label>
 
-        <button id="downloadButton" type="button">Excel 다운로드</button>
-        <button id="clearButton" type="button">내용 비우기</button>
+        <button id="downloadButton" type="button">
+          Excel 다운로드
+        </button>
+
+        <button id="clearButton" type="button">
+          내용 비우기
+        </button>
       </div>
 
-      <p id="status" class="status">텍스트를 붙여 넣으십시오.</p>
+      <p id="status" class="status">
+        텍스트를 붙여 넣으십시오.
+      </p>
 
       <div class="preview-wrap">
-        <div id="emptyPreview" class="empty">미리보기가 여기에 표시됩니다.</div>
+        <div id="emptyPreview" class="empty">
+          미리보기가 여기에 표시됩니다.
+        </div>
+
         <table id="previewTable" hidden>
           <thead>
             <tr>
@@ -250,6 +273,7 @@ CB00003100	"두 번째 학생 내용"'></textarea>
               <th>sub2</th>
             </tr>
           </thead>
+
           <tbody id="previewBody"></tbody>
         </table>
       </div>
@@ -266,6 +290,26 @@ CB00003100	"두 번째 학생 내용"'></textarea>
     const previewTable = document.getElementById("previewTable");
     const previewBody = document.getElementById("previewBody");
     const emptyPreview = document.getElementById("emptyPreview");
+
+    /**
+     * 현재 날짜와 시간을 파일명 형식으로 반환합니다.
+     * 예: 20260725_154307
+     */
+    function getCurrentDateTimeFileName() {
+      const now = new Date();
+
+      const pad = (number) =>
+        String(number).padStart(2, "0");
+
+      const year = now.getFullYear();
+      const month = pad(now.getMonth() + 1);
+      const day = pad(now.getDate());
+      const hour = pad(now.getHours());
+      const minute = pad(now.getMinutes());
+      const second = pad(now.getSeconds());
+
+      return `${year}${month}${day}_${hour}${minute}${second}`;
+    }
 
     /**
      * 탭 구분 텍스트를 파싱합니다.
@@ -294,6 +338,7 @@ CB00003100	"두 번째 학생 내용"'></textarea>
           } else {
             field += char;
           }
+
           continue;
         }
 
@@ -309,6 +354,7 @@ CB00003100	"두 번째 학생 내용"'></textarea>
 
           row.push(field);
           rows.push(row);
+
           row = [];
           field = "";
         } else {
@@ -328,6 +374,9 @@ CB00003100	"두 번째 학생 내용"'></textarea>
       );
     }
 
+    /**
+     * A, B, C열까지만 저장합니다.
+     */
     function normalizeRows(rows) {
       return rows.map((row) => [
         row[0] ?? "",
@@ -343,7 +392,9 @@ CB00003100	"두 번째 학생 내용"'></textarea>
         return [];
       }
 
-      return normalizeRows(parseTabSeparatedText(rawText));
+      return normalizeRows(
+        parseTabSeparatedText(rawText)
+      );
     }
 
     function setStatus(message, type = "") {
@@ -357,14 +408,23 @@ CB00003100	"두 번째 학생 내용"'></textarea>
       if (!sourceText.value.trim()) {
         previewTable.hidden = true;
         emptyPreview.hidden = false;
+        emptyPreview.textContent =
+          "미리보기가 여기에 표시됩니다.";
+
         setStatus("텍스트를 붙여 넣으십시오.");
         return;
       }
 
       try {
-        const originalRows = parseTabSeparatedText(sourceText.value);
+        const originalRows =
+          parseTabSeparatedText(sourceText.value);
+
         const rows = normalizeRows(originalRows);
-        const extraColumnRows = originalRows.filter((row) => row.length > 3).length;
+
+        const extraColumnRows = originalRows.filter(
+          (row) => row.length > 3
+        ).length;
+
         const visibleRows = rows.slice(0, 5);
 
         for (const row of visibleRows) {
@@ -382,30 +442,28 @@ CB00003100	"두 번째 학생 내용"'></textarea>
         previewTable.hidden = false;
         emptyPreview.hidden = true;
 
-        let message = `${rows.length.toLocaleString()}개 행을 인식했습니다.`;
+        let message =
+          `${rows.length.toLocaleString()}개 행을 인식했습니다.`;
+
         if (rows.length > visibleRows.length) {
-          message += ` 미리보기는 앞 ${visibleRows.length}개 행만 표시합니다.`;
+          message +=
+            ` 미리보기는 앞 ${visibleRows.length}개 행만 표시합니다.`;
         }
+
         if (extraColumnRows > 0) {
-          message += ` A~C열 뒤의 추가 값은 저장하지 않습니다.`;
+          message +=
+            " A~C열 뒤의 추가 값은 저장하지 않습니다.";
         }
 
         setStatus(message, "success");
       } catch (error) {
         previewTable.hidden = true;
         emptyPreview.hidden = false;
-        emptyPreview.textContent = "텍스트 형식을 확인하십시오.";
+        emptyPreview.textContent =
+          "텍스트 형식을 확인하십시오.";
+
         setStatus(error.message, "error");
       }
-    }
-
-    function sanitizeFileName(name) {
-      const cleaned = name
-        .trim()
-        .replace(/[\\/:*?"<>|]/g, "_")
-        .replace(/\.+$/g, "");
-
-      return cleaned || "학생문자_변환";
     }
 
     function downloadExcel() {
@@ -414,6 +472,7 @@ CB00003100	"두 번째 학생 내용"'></textarea>
           "Excel 생성 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하십시오.",
           "error"
         );
+
         return;
       }
 
@@ -427,7 +486,11 @@ CB00003100	"두 번째 학생 내용"'></textarea>
       }
 
       if (rows.length === 0) {
-        setStatus("변환할 텍스트가 없습니다.", "error");
+        setStatus(
+          "변환할 텍스트가 없습니다.",
+          "error"
+        );
+
         sourceText.focus();
         return;
       }
@@ -437,20 +500,43 @@ CB00003100	"두 번째 학생 내용"'></textarea>
         ...rows
       ];
 
-      const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+      const worksheet =
+        XLSX.utils.aoa_to_sheet(sheetData);
+
+      const workbook =
+        XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        "Sheet1"
+      );
 
       const fileType = fileTypeSelect.value;
-      const fileName = `${sanitizeFileName(fileNameInput.value)}.${fileType}`;
 
-      XLSX.writeFile(workbook, fileName, {
-        bookType: fileType,
-        compression: true
-      });
+      /*
+       * 다운로드 버튼을 누른 순간의
+       * 날짜와 시간을 파일명으로 생성합니다.
+       */
+      const currentFileName =
+        getCurrentDateTimeFileName();
+
+      fileNameInput.value = currentFileName;
+
+      const finalFileName =
+        `${currentFileName}.${fileType}`;
+
+      XLSX.writeFile(
+        workbook,
+        finalFileName,
+        {
+          bookType: fileType,
+          compression: true
+        }
+      );
 
       setStatus(
-        `${rows.length.toLocaleString()}개 행을 ${fileName} 파일로 저장했습니다.`,
+        `${rows.length.toLocaleString()}개 행을 ${finalFileName} 파일로 저장했습니다.`,
         "success"
       );
     }
@@ -459,13 +545,22 @@ CB00003100	"두 번째 학생 내용"'></textarea>
 
     sourceText.addEventListener("input", () => {
       window.clearTimeout(previewTimer);
-      previewTimer = window.setTimeout(updatePreview, 120);
+
+      previewTimer = window.setTimeout(
+        updatePreview,
+        120
+      );
     });
 
-    downloadButton.addEventListener("click", downloadExcel);
+    downloadButton.addEventListener(
+      "click",
+      downloadExcel
+    );
 
     clearButton.addEventListener("click", () => {
       sourceText.value = "";
+      fileNameInput.value = "";
+
       updatePreview();
       sourceText.focus();
     });
