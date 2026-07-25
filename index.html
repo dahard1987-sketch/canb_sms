@@ -32,9 +32,9 @@
 
     h1 {
       margin: 0 0 20px;
-      font-size: 28px;
+      font-size: 30px;
       text-align: center;
-      letter-spacing: -0.03em;
+      letter-spacing: -0.04em;
     }
 
     .panel {
@@ -44,24 +44,51 @@
       border-radius: 12px;
     }
 
+    .textarea-wrap {
+      position: relative;
+    }
+
     textarea {
       display: block;
       width: 100%;
       min-height: 430px;
       resize: vertical;
-      padding: 14px;
+      padding: 18px;
       border: 1px solid #bfc4cc;
       border-radius: 8px;
       font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas,
         "Liberation Mono", monospace;
       white-space: pre;
       tab-size: 4;
+      background: #fff;
     }
 
     textarea:focus {
       outline: 2px solid #4178d0;
       outline-offset: 1px;
       border-color: #4178d0;
+    }
+
+    .paste-guide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      pointer-events: none;
+      padding: 24px;
+      color: #3f4a56;
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: -0.05em;
+      line-height: 1.2;
+      font-family: "Pretendard", "SUIT", "Noto Sans KR", -apple-system,
+        BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .textarea-wrap.is-empty .paste-guide {
+      display: flex;
     }
 
     .options {
@@ -190,6 +217,10 @@
         margin: 16px auto;
       }
 
+      .paste-guide {
+        font-size: 24px;
+      }
+
       .options {
         grid-template-columns: 1fr;
       }
@@ -206,11 +237,14 @@
     <h1>캔비 문자툴</h1>
 
     <section class="panel">
-      <textarea
-        id="sourceText"
-        spellcheck="false"
-        placeholder="여기에 붙여넣기"
-      ></textarea>
+      <div class="textarea-wrap is-empty" id="textareaWrap">
+        <textarea
+          id="sourceText"
+          spellcheck="false"
+          aria-label="여기에 붙여넣기"
+        ></textarea>
+        <div class="paste-guide" aria-hidden="true">여기에 붙여넣기</div>
+      </div>
 
       <div class="options">
         <label>
@@ -251,6 +285,7 @@
   </main>
 
   <script>
+    const textareaWrap = document.getElementById("textareaWrap");
     const sourceText = document.getElementById("sourceText");
     const fileNameInput = document.getElementById("fileName");
     const downloadButton = document.getElementById("downloadButton");
@@ -259,6 +294,10 @@
     const previewTable = document.getElementById("previewTable");
     const previewBody = document.getElementById("previewBody");
     const emptyPreview = document.getElementById("emptyPreview");
+
+    function syncTextareaEmptyState() {
+      textareaWrap.classList.toggle("is-empty", sourceText.value.length === 0);
+    }
 
     function getCurrentDateTimeFileName() {
       const now = new Date();
@@ -357,6 +396,7 @@
 
     function updatePreview() {
       previewBody.replaceChildren();
+      syncTextareaEmptyState();
 
       if (!sourceText.value.trim()) {
         previewTable.hidden = true;
@@ -469,6 +509,7 @@
     let previewTimer;
 
     sourceText.addEventListener("input", () => {
+      syncTextareaEmptyState();
       window.clearTimeout(previewTimer);
 
       previewTimer = window.setTimeout(
@@ -490,6 +531,7 @@
       sourceText.focus();
     });
 
+    syncTextareaEmptyState();
     updatePreview();
   </script>
 </body>
