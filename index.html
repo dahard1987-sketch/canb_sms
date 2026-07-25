@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>플레인 텍스트 → Excel 변환기</title>
+  <title>캔비 문자툴</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
@@ -30,14 +31,10 @@
     }
 
     h1 {
-      margin: 0 0 8px;
-      font-size: 24px;
-    }
-
-    .description {
       margin: 0 0 20px;
-      color: #5c5c5c;
-      line-height: 1.6;
+      font-size: 28px;
+      text-align: center;
+      letter-spacing: -0.03em;
     }
 
     .panel {
@@ -69,7 +66,7 @@
 
     .options {
       display: grid;
-      grid-template-columns: minmax(180px, 1fr) 140px auto auto;
+      grid-template-columns: minmax(180px, 1fr) auto auto;
       gap: 10px;
       align-items: end;
       margin-top: 14px;
@@ -83,15 +80,13 @@
     }
 
     input,
-    select,
     button {
       height: 42px;
       border-radius: 7px;
       font: inherit;
     }
 
-    input,
-    select {
+    input {
       padding: 0 11px;
       border: 1px solid #bfc4cc;
       background: #fff;
@@ -196,7 +191,7 @@
       }
 
       .options {
-        grid-template-columns: 1fr 120px;
+        grid-template-columns: 1fr;
       }
 
       .options button {
@@ -208,23 +203,13 @@
 
 <body>
   <main>
-    <h1>플레인 텍스트 → Excel 변환기</h1>
-
-    <p class="description">
-      탭으로 구분된 텍스트를 붙여 넣으면 첫 번째 값은 A열,
-      두 번째 값은 B열, 세 번째 값은 C열에 저장됩니다.
-      큰따옴표 안의 줄바꿈은 하나의 셀 안에 그대로 유지됩니다.
-    </p>
+    <h1>캔비 문자툴</h1>
 
     <section class="panel">
       <textarea
         id="sourceText"
         spellcheck="false"
-        placeholder='예시:
-CB00031594	"[캔비어학원] 학생 숙제 리포트입니다.
-
-여러 줄의 내용도 같은 셀에 들어갑니다."
-CB00003100	"두 번째 학생 내용"'
+        placeholder="여기에 붙여넣기"
       ></textarea>
 
       <div class="options">
@@ -237,14 +222,6 @@ CB00003100	"두 번째 학생 내용"'
             placeholder="다운로드할 때 자동 생성"
             readonly
           />
-        </label>
-
-        <label>
-          파일 형식
-          <select id="fileType">
-            <option value="xls" selected>.xls</option>
-            <option value="xlsx">.xlsx</option>
-          </select>
         </label>
 
         <button id="downloadButton" type="button">Excel 다운로드</button>
@@ -276,7 +253,6 @@ CB00003100	"두 번째 학생 내용"'
   <script>
     const sourceText = document.getElementById("sourceText");
     const fileNameInput = document.getElementById("fileName");
-    const fileTypeSelect = document.getElementById("fileType");
     const downloadButton = document.getElementById("downloadButton");
     const clearButton = document.getElementById("clearButton");
     const statusElement = document.getElementById("status");
@@ -284,10 +260,6 @@ CB00003100	"두 번째 학생 내용"'
     const previewBody = document.getElementById("previewBody");
     const emptyPreview = document.getElementById("emptyPreview");
 
-    /**
-     * 현재 날짜와 시간을 파일명 형식으로 반환합니다.
-     * 예: 20260725_154307
-     */
     function getCurrentDateTimeFileName() {
       const now = new Date();
       const pad = (number) => String(number).padStart(2, "0");
@@ -302,11 +274,6 @@ CB00003100	"두 번째 학생 내용"'
       return `${year}${month}${day}_${hour}${minute}${second}`;
     }
 
-    /**
-     * 탭 구분 텍스트를 파싱합니다.
-     * 큰따옴표 안의 탭과 줄바꿈은 셀 내용으로 유지합니다.
-     * 큰따옴표 두 개("")는 실제 큰따옴표 하나로 변환합니다.
-     */
     function parseTabSeparatedText(rawText) {
       const text = rawText.replace(/^\uFEFF/, "");
       const rows = [];
@@ -365,9 +332,6 @@ CB00003100	"두 번째 학생 내용"'
       );
     }
 
-    /**
-     * A, B, C열까지만 저장합니다.
-     */
     function normalizeRows(rows) {
       return rows.map((row) => [
         row[0] ?? "",
@@ -428,17 +392,14 @@ CB00003100	"두 번째 학생 내용"'
         previewTable.hidden = false;
         emptyPreview.hidden = true;
 
-        let message =
-          `${rows.length.toLocaleString()}개 행을 인식했습니다.`;
+        let message = `${rows.length.toLocaleString()}개 행을 인식했습니다.`;
 
         if (rows.length > visibleRows.length) {
-          message +=
-            ` 미리보기는 앞 ${visibleRows.length}개 행만 표시합니다.`;
+          message += ` 미리보기는 앞 ${visibleRows.length}개 행만 표시합니다.`;
         }
 
         if (extraColumnRows > 0) {
-          message +=
-            " A~C열 뒤의 추가 값은 저장하지 않습니다.";
+          message += " A~C열 뒤의 추가 값은 저장하지 않습니다.";
         }
 
         setStatus(message, "success");
@@ -485,33 +446,18 @@ CB00003100	"두 번째 학생 내용"'
 
       XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
 
-      const fileType = fileTypeSelect.value;
       const currentFileName = getCurrentDateTimeFileName();
-      const finalFileName = `${currentFileName}.${fileType}`;
+      const finalFileName = `${currentFileName}.xls`;
 
       fileNameInput.value = currentFileName;
-
-      /*
-       * 중요:
-       * .xls는 "xls"가 아니라 BIFF8 형식으로 명시하고,
-       * bookSST를 켜야 255자를 넘는 긴 문자열이 잘리지 않습니다.
-       */
-      const writeOptions =
-        fileType === "xls"
-          ? {
-              bookType: "biff8",
-              bookSST: true
-            }
-          : {
-              bookType: "xlsx",
-              bookSST: true,
-              compression: true
-            };
 
       XLSX.writeFile(
         workbook,
         finalFileName,
-        writeOptions
+        {
+          bookType: "biff8",
+          bookSST: true
+        }
       );
 
       setStatus(
@@ -548,9 +494,3 @@ CB00003100	"두 번째 학생 내용"'
   </script>
 </body>
 </html>
-'''
-
-output = Path("/mnt/data/plain_text_to_excel_fixed.html")
-output.write_text(html, encoding="utf-8")
-
-print(f"Created: {output}")
