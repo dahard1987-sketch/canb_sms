@@ -1,1133 +1,710 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>캔비 문자툴</title>
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <style>
-    :root {
-      color-scheme: light;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-        "Noto Sans KR", sans-serif;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      background: #f4f5f7;
-      color: #171717;
-    }
-
-    main {
-      width: min(1100px, calc(100% - 32px));
-      margin: 32px auto;
-    }
-
-    h1 {
-      margin: 0 0 20px;
-      font-size: 30px;
-      text-align: center;
-      letter-spacing: -0.04em;
-    }
-
-    .panel {
-      padding: 20px;
-      background: #fff;
-      border: 1px solid #d9dce1;
-      border-radius: 12px;
-    }
-
-    .textarea-wrap {
-      position: relative;
-    }
-
-    #sourceText {
-      display: block;
-      width: 100%;
-      min-height: 430px;
-      resize: vertical;
-      padding: 18px;
-      border: 1px solid #bfc4cc;
-      border-radius: 8px;
-      background: #fff;
-      font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas,
-        "Liberation Mono", monospace;
-      white-space: pre;
-      tab-size: 4;
-    }
-
-    #sourceText:focus,
-    #repeatedTextEditor:focus,
-    select:focus {
-      outline: 2px solid #4178d0;
-      outline-offset: 1px;
-      border-color: #4178d0;
-    }
-
-    .paste-guide {
-      position: absolute;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      color: #3f4a56;
-      font-family: "Pretendard", "SUIT", "Noto Sans KR", -apple-system,
-        BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 30px;
-      font-weight: 700;
-      line-height: 1.2;
-      letter-spacing: -0.05em;
-      text-align: center;
-      pointer-events: none;
-    }
-
-    .textarea-wrap.is-empty .paste-guide {
-      display: flex;
-    }
-
-    .options {
-      display: grid;
-      grid-template-columns: minmax(180px, 1fr) auto auto;
-      gap: 10px;
-      align-items: end;
-      margin-top: 14px;
-    }
-
-    label {
-      display: grid;
-      gap: 6px;
-      color: #4d4d4d;
-      font-size: 13px;
-    }
-
-    input,
-    select,
-    button {
-      min-height: 42px;
-      border-radius: 7px;
-      font: inherit;
-    }
-
-    input,
-    select {
-      padding: 0 11px;
-      border: 1px solid #bfc4cc;
-    }
-
-    input {
-      background: #f3f4f6;
-      color: #555;
-    }
-
-    select {
-      width: 100%;
-      background: #fff;
-      color: #252525;
-    }
-
-    button {
-      padding: 0 18px;
-      border: 0;
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    button:hover {
-      filter: brightness(0.96);
-    }
-
-    #downloadButton {
-      background: #176b3a;
-      color: #fff;
-    }
-
-    #clearButton,
-    #redetectButton {
-      background: #e9ebef;
-      color: #252525;
-    }
-
-    .status {
-      min-height: 24px;
-      margin: 14px 0 0;
-      font-size: 14px;
-      line-height: 1.6;
-    }
-
-    .status.success {
-      color: #126733;
-    }
-
-    .status.error {
-      color: #b42318;
-    }
-
-    .repeated-panel {
-      margin-top: 16px;
-      padding: 16px;
-      border: 1px solid #bfd7c7;
-      border-radius: 10px;
-      background: #f5faf6;
-    }
-
-    .repeated-panel[hidden] {
-      display: none;
-    }
-
-    .repeated-heading {
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-
-    .repeated-heading h2 {
-      margin: 0;
-      font-size: 17px;
-      letter-spacing: -0.025em;
-    }
-
-    .repeated-heading p {
-      margin: 5px 0 0;
-      color: #59635d;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    #redetectButton {
-      flex: 0 0 auto;
-      min-height: 36px;
-      padding: 0 13px;
-      font-size: 13px;
-    }
-
-    .repeated-controls {
-      display: grid;
-      grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1.7fr);
-      gap: 12px;
-      align-items: start;
-    }
-
-    .repeated-editor-wrap {
-      display: grid;
-      gap: 6px;
-    }
-
-    .repeated-editor-label {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      color: #4d4d4d;
-      font-size: 13px;
-    }
-
-    .match-badge {
-      flex: 0 0 auto;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: #dcecdf;
-      color: #175f36;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    #repeatedTextEditor {
-      display: block;
-      width: 100%;
-      min-height: 116px;
-      resize: vertical;
-      padding: 12px;
-      border: 1px solid #aebfb3;
-      border-radius: 8px;
-      background: #fff;
-      color: #202622;
-      font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas,
-        "Liberation Mono", monospace;
-      white-space: pre-wrap;
-    }
-
-    .repeated-note {
-      min-height: 20px;
-      margin: 7px 0 0;
-      color: #59635d;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .repeated-note.error {
-      color: #b42318;
-    }
-
-    .preview-wrap {
-      max-height: 600px;
-      margin-top: 18px;
-      overflow: auto;
-      border: 1px solid #d9dce1;
-      border-radius: 8px;
-    }
-
-    table {
-      width: 100%;
-      min-width: 720px;
-      border-collapse: collapse;
-      table-layout: fixed;
-      font-size: 13px;
-    }
-
-    th,
-    td {
-      padding: 9px 10px;
-      border-right: 1px solid #dedfe2;
-      border-bottom: 1px solid #dedfe2;
-      text-align: left;
-      vertical-align: top;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-    }
-
-    td[contenteditable="true"] {
-      cursor: text;
-      background: #fff;
-    }
-
-    td[contenteditable="true"]:hover {
-      background: #f8fbf7;
-    }
-
-    td[contenteditable="true"]:focus {
-      position: relative;
-      z-index: 2;
-      outline: 2px solid #176b3a;
-      outline-offset: -2px;
-      background: #fff;
-    }
-
-    th {
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      background: #edf3e7;
-      text-align: center;
-    }
-
-    th:first-child,
-    td:first-child {
-      width: 170px;
-    }
-
-    tr:last-child td {
-      border-bottom: 0;
-    }
-
-    th:last-child,
-    td:last-child {
-      border-right: 0;
-    }
-
-    .empty {
-      padding: 18px;
-      color: #777;
-      text-align: center;
-    }
-
-    @media (max-width: 760px) {
-      main {
-        width: min(100% - 20px, 1100px);
-        margin: 16px auto;
-      }
-
-      .paste-guide {
-        font-size: 24px;
-      }
-
-      .options,
-      .repeated-controls {
-        grid-template-columns: 1fr;
-      }
-
-      .options button {
-        width: 100%;
-      }
-
-      .repeated-heading {
-        display: grid;
-      }
-
-      #redetectButton {
-        width: 100%;
-      }
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>캔비 문자툴</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+color-scheme: light;
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+"Noto Sans KR", sans-serif;
+}
+* {
+box-sizing: border-box;
+}
+body {
+margin: 0;
+background: #f4f5f7;
+color: #171717;
+}
+main {
+width: min(1100px, calc(100% - 32px));
+margin: 32px auto;
+}
+h1 {
+margin: 0 0 20px;
+font-size: 30px;
+text-align: center;
+letter-spacing: -0.04em;
+}
+.panel {
+padding: 20px;
+background: #fff;
+border: 1px solid #d9dce1;
+border-radius: 12px;
+}
+.textarea-wrap {
+position: relative;
+}
+#sourceText {
+display: block;
+width: 100%;
+min-height: 430px;
+resize: vertical;
+padding: 18px;
+border: 1px solid #bfc4cc;
+border-radius: 8px;
+background: #fff;
+font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas,
+"Liberation Mono", monospace;
+white-space: pre;
+tab-size: 4;
+}
+#sourceText:focus,
+#repeatedTextEditor:focus {
+outline: 2px solid #4178d0;
+outline-offset: 1px;
+border-color: #4178d0;
+}
+.paste-guide {
+position: absolute;
+inset: 0;
+display: none;
+align-items: center;
+justify-content: center;
+padding: 24px;
+color: #3f4a56;
+font-family: "Pretendard", "SUIT", "Noto Sans KR", -apple-system,
+BlinkMacSystemFont, "Segoe UI", sans-serif;
+font-size: 30px;
+font-weight: 700;
+line-height: 1.2;
+letter-spacing: -0.05em;
+text-align: center;
+pointer-events: none;
+}
+.textarea-wrap.is-empty .paste-guide {
+display: flex;
+}
+.options {
+display: grid;
+grid-template-columns: minmax(180px, 1fr) auto auto;
+gap: 10px;
+align-items: end;
+margin-top: 14px;
+}
+label {
+display: grid;
+gap: 6px;
+color: #4d4d4d;
+font-size: 13px;
+}
+input,
+button {
+min-height: 42px;
+border-radius: 7px;
+font: inherit;
+}
+input {
+padding: 0 11px;
+border: 1px solid #bfc4cc;
+background: #f3f4f6;
+color: #555;
+}
+button {
+padding: 0 18px;
+border: 0;
+cursor: pointer;
+font-weight: 700;
+}
+button:hover {
+filter: brightness(0.96);
+}
+#downloadButton {
+background: #176b3a;
+color: #fff;
+}
+#clearButton,
+#redetectButton {
+background: #e9ebef;
+color: #252525;
+}
+.status {
+min-height: 24px;
+margin: 14px 0 0;
+font-size: 14px;
+line-height: 1.6;
+}
+.status.success {
+color: #126733;
+}
+.status.error {
+color: #b42318;
+}
+.repeated-panel {
+margin-top: 16px;
+padding: 16px;
+border: 1px solid #bfd7c7;
+border-radius: 10px;
+background: #f5faf6;
+}
+.repeated-panel[hidden] {
+display: none;
+}
+.repeated-heading {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 12px;
+margin-bottom: 10px;
+}
+.repeated-heading h2 {
+margin: 0;
+font-size: 17px;
+letter-spacing: -0.025em;
+}
+#redetectButton {
+flex: 0 0 auto;
+min-height: 36px;
+padding: 0 13px;
+font-size: 13px;
+}
+#repeatedTextEditor {
+display: block;
+width: 100%;
+min-height: 116px;
+resize: vertical;
+padding: 12px;
+border: 1px solid #aebfb3;
+border-radius: 8px;
+background: #fff;
+color: #202622;
+font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas,
+"Liberation Mono", monospace;
+white-space: pre-wrap;
+}
+.preview-wrap {
+max-height: 600px;
+margin-top: 18px;
+overflow: auto;
+border: 1px solid #d9dce1;
+border-radius: 8px;
+}
+table {
+width: 100%;
+min-width: 720px;
+border-collapse: collapse;
+table-layout: fixed;
+font-size: 13px;
+}
+th,
+td {
+padding: 9px 10px;
+border-right: 1px solid #dedfe2;
+border-bottom: 1px solid #dedfe2;
+text-align: left;
+vertical-align: top;
+white-space: pre-wrap;
+overflow-wrap: anywhere;
+}
+th {
+position: sticky;
+top: 0;
+z-index: 1;
+background: #edf3e7;
+text-align: center;
+}
+th:first-child,
+td:first-child {
+width: 170px;
+}
+td.student-code {
+background: #f6f7f8;
+color: #30343a;
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas,
+"Liberation Mono", monospace;
+user-select: text;
+}
+td[contenteditable="true"] {
+cursor: text;
+background: #fff;
+}
+td[contenteditable="true"]:hover {
+background: #f8fbf7;
+}
+td[contenteditable="true"]:focus {
+position: relative;
+z-index: 2;
+outline: 2px solid #176b3a;
+outline-offset: -2px;
+background: #fff;
+}
+tr:last-child td {
+border-bottom: 0;
+}
+th:last-child,
+td:last-child {
+border-right: 0;
+}
+.empty {
+padding: 18px;
+color: #777;
+text-align: center;
+}
+@media (max-width: 760px) {
+main {
+width: min(100% - 20px, 1100px);
+margin: 16px auto;
+}
+.paste-guide {
+font-size: 24px;
+}
+.options {
+grid-template-columns: 1fr;
+}
+.options button,
+#redetectButton {
+width: 100%;
+}
+.repeated-heading {
+display: grid;
+}
+}
+</style>
 </head>
 <body>
-  <main>
-    <h1>캔비 문자툴</h1>
-
-    <section class="panel">
-      <div class="textarea-wrap is-empty" id="textareaWrap">
-        <textarea
-          id="sourceText"
-          spellcheck="false"
-          aria-label="여기에 붙여넣기"
-        ></textarea>
-        <div class="paste-guide" aria-hidden="true">여기에 붙여넣기</div>
-      </div>
-
-      <div class="options">
-        <label>
-          파일 이름
-          <input
-            id="fileName"
-            type="text"
-            placeholder="다운로드할 때 자동 생성"
-            readonly
-          />
-        </label>
-        <button id="downloadButton" type="button">Excel 다운로드</button>
-        <button id="clearButton" type="button">내용 비우기</button>
-      </div>
-
-      <p id="status" class="status">텍스트를 붙여 넣으십시오.</p>
-
-      <section id="repeatedPanel" class="repeated-panel" hidden>
-        <div class="repeated-heading">
-          <div>
-            <h2>반복 문구 일괄 수정</h2>
-            <p>자동으로 찾은 반복 문구를 수정하면 해당 문구가 들어간 모든 sub1·sub2 셀이 함께 바뀝니다.</p>
-          </div>
-          <button id="redetectButton" type="button">반복 문구 다시 찾기</button>
-        </div>
-
-        <div class="repeated-controls">
-          <label>
-            반복 문구 선택
-            <select id="repeatedPhraseSelect"></select>
-          </label>
-
-          <div class="repeated-editor-wrap">
-            <div class="repeated-editor-label">
-              <span>선택한 문구 편집</span>
-              <span id="matchBadge" class="match-badge"></span>
-            </div>
-            <textarea
-              id="repeatedTextEditor"
-              spellcheck="false"
-              aria-label="반복 문구 일괄 편집"
-            ></textarea>
-            <p id="repeatedNote" class="repeated-note">입력을 멈추면 약 0.3초 뒤 전체 셀에 자동 반영됩니다.</p>
-          </div>
-        </div>
-      </section>
-
-      <div class="preview-wrap" id="previewWrap">
-        <div id="emptyPreview" class="empty">미리보기가 여기에 표시됩니다.</div>
-        <table id="previewTable" hidden>
-          <thead>
-            <tr>
-              <th>학생코드</th>
-              <th>sub1</th>
-              <th>sub2</th>
-            </tr>
-          </thead>
-          <tbody id="previewBody"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
-
-  <script>
-    const textareaWrap = document.getElementById("textareaWrap");
-    const sourceText = document.getElementById("sourceText");
-    const fileNameInput = document.getElementById("fileName");
-    const downloadButton = document.getElementById("downloadButton");
-    const clearButton = document.getElementById("clearButton");
-    const statusElement = document.getElementById("status");
-    const previewWrap = document.getElementById("previewWrap");
-    const previewTable = document.getElementById("previewTable");
-    const previewBody = document.getElementById("previewBody");
-    const emptyPreview = document.getElementById("emptyPreview");
-    const repeatedPanel = document.getElementById("repeatedPanel");
-    const repeatedPhraseSelect = document.getElementById("repeatedPhraseSelect");
-    const repeatedTextEditor = document.getElementById("repeatedTextEditor");
-    const redetectButton = document.getElementById("redetectButton");
-    const matchBadge = document.getElementById("matchBadge");
-    const repeatedNote = document.getElementById("repeatedNote");
-
-    const REPEATED_SEED_LENGTH = 24;
-    const MIN_REPEATED_TEXT_LENGTH = 24;
-    const MAX_REPEATED_PHRASES = 10;
-
-    let previewRows = [];
-    let repeatedPhrases = [];
-    let activeRepeatedPhrase = null;
-    let previewTimer;
-    let repeatedReplaceTimer;
-
-    function syncTextareaEmptyState() {
-      textareaWrap.classList.toggle("is-empty", sourceText.value.length === 0);
-    }
-
-    function getCurrentDateTimeFileName() {
-      const now = new Date();
-      const pad = (number) => String(number).padStart(2, "0");
-
-      return (
-        now.getFullYear() +
-        pad(now.getMonth() + 1) +
-        pad(now.getDate()) +
-        "_" +
-        pad(now.getHours()) +
-        pad(now.getMinutes()) +
-        pad(now.getSeconds())
-      );
-    }
-
-    function parseTabSeparatedText(rawText) {
-      const text = rawText.replace(/^\uFEFF/, "");
-      const rows = [];
-      let row = [];
-      let field = "";
-      let inQuotes = false;
-
-      for (let i = 0; i < text.length; i += 1) {
-        const startsNewStudentRecord =
-          i > 0 &&
-          /^CB\d{8}\t/.test(text.slice(i)) &&
-          (row.length > 0 || field.length > 0);
-
-        if (startsNewStudentRecord) {
-          row.push(field);
-          rows.push(row);
-          row = [];
-          field = "";
-          inQuotes = false;
-        }
-
-        const char = text[i];
-
-        if (inQuotes) {
-          if (char === '"') {
-            if (text[i + 1] === '"') {
-              field += '"';
-              i += 1;
-            } else {
-              inQuotes = false;
-            }
-          } else {
-            field += char;
-          }
-          continue;
-        }
-
-        if (char === '"' && field.length === 0) {
-          inQuotes = true;
-        } else if (char === "\t") {
-          row.push(field);
-          field = "";
-        } else if (char === "\r" || char === "\n") {
-          if (char === "\r" && text[i + 1] === "\n") {
-            i += 1;
-          }
-          row.push(field);
-          rows.push(row);
-          row = [];
-          field = "";
-        } else {
-          field += char;
-        }
-      }
-
-      if (inQuotes) {
-        throw new Error("닫히지 않은 큰따옴표가 있습니다.");
-      }
-
-      row.push(field);
-      rows.push(row);
-
-      return rows.filter((currentRow) =>
-        currentRow.some((cell) => cell !== "")
-      );
-    }
-
-    function normalizeRows(rows) {
-      return rows.map((row) => [
-        row[0] ?? "",
-        row[1] ?? "",
-        row[2] ?? ""
-      ]);
-    }
-
-    function getPreviewRows() {
-      return previewRows.map((row) => [...row]);
-    }
-
-    function setStatus(message, type = "") {
-      statusElement.textContent = message;
-      statusElement.className = `status ${type}`.trim();
-    }
-
-    function renderPreviewTable() {
-      const previousScrollTop = previewWrap.scrollTop;
-      const previousScrollLeft = previewWrap.scrollLeft;
-      const fragment = document.createDocumentFragment();
-
-      previewBody.replaceChildren();
-
-      previewRows.forEach((row, rowIndex) => {
-        const tr = document.createElement("tr");
-
-        row.forEach((value, columnIndex) => {
-          const td = document.createElement("td");
-          td.contentEditable = "true";
-          td.spellcheck = false;
-          td.textContent = value;
-          td.dataset.rowIndex = String(rowIndex);
-          td.dataset.columnIndex = String(columnIndex);
-          td.setAttribute(
-            "aria-label",
-            `${rowIndex + 1}행 ${columnIndex + 1}열 편집`
-          );
-          tr.appendChild(td);
-        });
-
-        fragment.appendChild(tr);
-      });
-
-      previewBody.appendChild(fragment);
-      previewTable.hidden = previewRows.length === 0;
-      emptyPreview.hidden = previewRows.length > 0;
-
-      requestAnimationFrame(() => {
-        previewWrap.scrollTop = previousScrollTop;
-        previewWrap.scrollLeft = previousScrollLeft;
-      });
-    }
-
-    function getMessageCells() {
-      const cells = [];
-
-      previewRows.forEach((row, rowIndex) => {
-        [1, 2].forEach((columnIndex) => {
-          const text = row[columnIndex] ?? "";
-          if (text.length >= MIN_REPEATED_TEXT_LENGTH) {
-            cells.push({
-              key: `${rowIndex}:${columnIndex}`,
-              rowIndex,
-              columnIndex,
-              text
-            });
-          }
-        });
-      });
-
-      return cells;
-    }
-
-    function countTextOccurrences(text, phrase) {
-      if (!phrase) {
-        return 0;
-      }
-
-      let count = 0;
-      let startIndex = 0;
-
-      while (startIndex <= text.length - phrase.length) {
-        const foundIndex = text.indexOf(phrase, startIndex);
-        if (foundIndex === -1) {
-          break;
-        }
-        count += 1;
-        startIndex = foundIndex + phrase.length;
-      }
-
-      return count;
-    }
-
-    function getPhraseStats(phrase, cells) {
-      let totalOccurrences = 0;
-      let matchingCells = 0;
-
-      for (const cell of cells) {
-        const count = countTextOccurrences(cell.text, phrase);
-        if (count > 0) {
-          matchingCells += 1;
-          totalOccurrences += count;
-        }
-      }
-
-      return { matchingCells, totalOccurrences };
-    }
-
-    function cleanExpandedPhrase(rawPhrase) {
-      let phrase = rawPhrase.trim();
-
-      if (!phrase) {
-        return "";
-      }
-
-      const lastBoundaryIndex = Math.max(
-        phrase.lastIndexOf("\n"),
-        phrase.lastIndexOf("."),
-        phrase.lastIndexOf("!"),
-        phrase.lastIndexOf("?")
-      );
-      const trailingFragment = phrase.slice(lastBoundaryIndex + 1);
-
-      if (
-        lastBoundaryIndex >= 0 &&
-        trailingFragment.length > 0 &&
-        trailingFragment.length < 18 &&
-        !/[.!?]$/.test(phrase)
-      ) {
-        phrase = phrase.slice(0, lastBoundaryIndex + 1).trim();
-      }
-
-      return phrase;
-    }
-
-    function expandCommonSubstring(first, second, seedLength) {
-      let leftOffset = 0;
-      let rightOffset = seedLength;
-
-      while (
-        first.index - leftOffset - 1 >= 0 &&
-        second.index - leftOffset - 1 >= 0 &&
-        first.cell.text[first.index - leftOffset - 1] ===
-          second.cell.text[second.index - leftOffset - 1]
-      ) {
-        leftOffset += 1;
-      }
-
-      while (
-        first.index + rightOffset < first.cell.text.length &&
-        second.index + rightOffset < second.cell.text.length &&
-        first.cell.text[first.index + rightOffset] ===
-          second.cell.text[second.index + rightOffset]
-      ) {
-        rightOffset += 1;
-      }
-
-      return cleanExpandedPhrase(
-        first.cell.text.slice(
-          first.index - leftOffset,
-          first.index + rightOffset
-        )
-      );
-    }
-
-    function detectRepeatedPhrases() {
-      const cells = getMessageCells();
-      const seedMap = new Map();
-      const candidateMap = new Map();
-
-      if (cells.length < 2) {
-        return [];
-      }
-
-      for (const cell of cells) {
-        const seenInCell = new Set();
-
-        for (
-          let index = 0;
-          index <= cell.text.length - REPEATED_SEED_LENGTH;
-          index += 1
-        ) {
-          const seed = cell.text.slice(index, index + REPEATED_SEED_LENGTH);
-
-          if (
-            seenInCell.has(seed) ||
-            seed.replace(/\s/g, "").length < 12
-          ) {
-            continue;
-          }
-
-          seenInCell.add(seed);
-
-          if (!seedMap.has(seed)) {
-            seedMap.set(seed, []);
-          }
-
-          seedMap.get(seed).push({ cell, index });
-        }
-      }
-
-      for (const entries of seedMap.values()) {
-        const distinctCellKeys = new Set(entries.map((entry) => entry.cell.key));
-        if (distinctCellKeys.size < 2) {
-          continue;
-        }
-
-        const first = entries[0];
-        const comparisonEntries = entries
-          .filter((entry) => entry.cell.key !== first.cell.key)
-          .slice(0, 4);
-
-        for (const second of comparisonEntries) {
-          const phrase = expandCommonSubstring(
-            first,
-            second,
-            REPEATED_SEED_LENGTH
-          );
-
-          if (
-            phrase.length < MIN_REPEATED_TEXT_LENGTH ||
-            phrase.replace(/\s/g, "").length < 12
-          ) {
-            continue;
-          }
-
-          if (!candidateMap.has(phrase)) {
-            const stats = getPhraseStats(phrase, cells);
-            if (stats.matchingCells >= 2) {
-              candidateMap.set(phrase, {
-                phrase,
-                matchingCells: stats.matchingCells,
-                totalOccurrences: stats.totalOccurrences,
-                score: phrase.length * stats.matchingCells
-              });
-            }
-          }
-        }
-      }
-
-      const sortedCandidates = [...candidateMap.values()].sort((a, b) =>
-        b.score - a.score ||
-        b.matchingCells - a.matchingCells ||
-        b.phrase.length - a.phrase.length
-      );
-
-      const selectedCandidates = [];
-
-      for (const candidate of sortedCandidates) {
-        const isRedundant = selectedCandidates.some(
-          (selected) =>
-            selected.phrase.includes(candidate.phrase) &&
-            selected.matchingCells >= candidate.matchingCells
-        );
-
-        if (!isRedundant) {
-          selectedCandidates.push(candidate);
-        }
-
-        if (selectedCandidates.length >= MAX_REPEATED_PHRASES) {
-          break;
-        }
-      }
-
-      return selectedCandidates;
-    }
-
-    function createPhraseOptionLabel(candidate, index) {
-      const oneLine = candidate.phrase.replace(/\s+/g, " ").trim();
-      const preview = oneLine.length > 58
-        ? `${oneLine.slice(0, 58)}…`
-        : oneLine;
-
-      return `${index + 1}. ${candidate.matchingCells}개 셀 · ${preview}`;
-    }
-
-    function updateMatchBadge() {
-      if (!activeRepeatedPhrase) {
-        matchBadge.textContent = "";
-        return;
-      }
-
-      const cells = getMessageCells();
-      const stats = getPhraseStats(activeRepeatedPhrase.currentText, cells);
-      activeRepeatedPhrase.matchingCells = stats.matchingCells;
-      activeRepeatedPhrase.totalOccurrences = stats.totalOccurrences;
-      matchBadge.textContent = `${stats.matchingCells}개 셀 · ${stats.totalOccurrences}회`;
-    }
-
-    function selectRepeatedPhrase(index) {
-      const candidate = repeatedPhrases[index];
-
-      if (!candidate) {
-        activeRepeatedPhrase = null;
-        repeatedTextEditor.value = "";
-        updateMatchBadge();
-        return;
-      }
-
-      activeRepeatedPhrase = {
-        index,
-        currentText: candidate.phrase,
-        matchingCells: candidate.matchingCells,
-        totalOccurrences: candidate.totalOccurrences
-      };
-
-      repeatedTextEditor.value = candidate.phrase;
-      repeatedNote.textContent = "입력을 멈추면 약 0.3초 뒤 전체 셀에 자동 반영됩니다.";
-      repeatedNote.className = "repeated-note";
-      updateMatchBadge();
-    }
-
-    function renderRepeatedPanel(preferredIndex = 0) {
-      repeatedPhraseSelect.replaceChildren();
-      repeatedPanel.hidden = repeatedPhrases.length === 0;
-
-      if (repeatedPhrases.length === 0) {
-        activeRepeatedPhrase = null;
-        repeatedTextEditor.value = "";
-        return;
-      }
-
-      repeatedPhrases.forEach((candidate, index) => {
-        const option = document.createElement("option");
-        option.value = String(index);
-        option.textContent = createPhraseOptionLabel(candidate, index);
-        repeatedPhraseSelect.appendChild(option);
-      });
-
-      const safeIndex = Math.min(preferredIndex, repeatedPhrases.length - 1);
-      repeatedPhraseSelect.value = String(safeIndex);
-      selectRepeatedPhrase(safeIndex);
-    }
-
-    function refreshRepeatedPhrases() {
-      window.clearTimeout(repeatedReplaceTimer);
-      repeatedPhrases = detectRepeatedPhrases();
-      renderRepeatedPanel(0);
-
-      if (previewRows.length > 0 && repeatedPhrases.length === 0) {
-        repeatedNote.textContent = "두 개 이상의 셀에서 공통으로 반복되는 긴 문구를 찾지 못했습니다.";
-      }
-    }
-
-    function replaceRepeatedText(newText) {
-      if (!activeRepeatedPhrase) {
-        return;
-      }
-
-      const oldText = activeRepeatedPhrase.currentText;
-      const normalizedNewText = newText.replace(/\r\n/g, "\n");
-
-      if (!normalizedNewText) {
-        repeatedNote.textContent = "빈 문구는 자동 반영하지 않습니다. 문구를 삭제하려면 공백 대신 원하는 대체 문구를 입력하십시오.";
-        repeatedNote.className = "repeated-note error";
-        return;
-      }
-
-      if (!oldText || oldText === normalizedNewText) {
-        return;
-      }
-
-      let changedCells = 0;
-      let replacementCount = 0;
-
-      previewRows = previewRows.map((row) =>
-        row.map((cellText, columnIndex) => {
-          if (columnIndex === 0 || !cellText.includes(oldText)) {
-            return cellText;
-          }
-
-          const count = countTextOccurrences(cellText, oldText);
-          changedCells += 1;
-          replacementCount += count;
-          return cellText.split(oldText).join(normalizedNewText);
-        })
-      );
-
-      if (replacementCount === 0) {
-        repeatedNote.textContent = "기존 반복 문구를 더 이상 찾을 수 없습니다. ‘반복 문구 다시 찾기’를 누르십시오.";
-        repeatedNote.className = "repeated-note error";
-        return;
-      }
-
-      activeRepeatedPhrase.currentText = normalizedNewText;
-      const candidate = repeatedPhrases[activeRepeatedPhrase.index];
-      if (candidate) {
-        candidate.phrase = normalizedNewText;
-      }
-
-      renderPreviewTable();
-      updateMatchBadge();
-
-      const selectedOption = repeatedPhraseSelect.options[activeRepeatedPhrase.index];
-      if (selectedOption && candidate) {
-        selectedOption.textContent = createPhraseOptionLabel(
-          {
-            ...candidate,
-            matchingCells: activeRepeatedPhrase.matchingCells,
-            totalOccurrences: activeRepeatedPhrase.totalOccurrences
-          },
-          activeRepeatedPhrase.index
-        );
-      }
-
-      repeatedNote.textContent = `${changedCells}개 셀에서 ${replacementCount}곳을 수정했습니다. 다운로드 파일에도 반영됩니다.`;
-      repeatedNote.className = "repeated-note";
-      setStatus(
-        `${previewRows.length.toLocaleString()}개 행을 편집 중입니다. 반복 문구 수정 내용이 다운로드 파일에 반영됩니다.`,
-        "success"
-      );
-    }
-
-    function updatePreview() {
-      syncTextareaEmptyState();
-
-      if (!sourceText.value.trim()) {
-        previewRows = [];
-        repeatedPhrases = [];
-        activeRepeatedPhrase = null;
-        previewTable.hidden = true;
-        emptyPreview.hidden = false;
-        emptyPreview.textContent = "미리보기가 여기에 표시됩니다.";
-        repeatedPanel.hidden = true;
-        setStatus("텍스트를 붙여 넣으십시오.");
-        return;
-      }
-
-      try {
-        const originalRows = parseTabSeparatedText(sourceText.value);
-        previewRows = normalizeRows(originalRows);
-        const extraColumnRows = originalRows.filter(
-          (row) => row.length > 3
-        ).length;
-
-        renderPreviewTable();
-        refreshRepeatedPhrases();
-
-        let message = `${previewRows.length.toLocaleString()}개 행을 인식했습니다. 미리보기 셀을 직접 수정할 수 있습니다.`;
-        if (repeatedPhrases.length > 0) {
-          message += ` 반복 문구 ${repeatedPhrases.length}개를 찾았습니다.`;
-        }
-        if (extraColumnRows > 0) {
-          message += " A~C열 뒤의 추가 값은 저장하지 않습니다.";
-        }
-        setStatus(message, "success");
-      } catch (error) {
-        previewRows = [];
-        repeatedPhrases = [];
-        activeRepeatedPhrase = null;
-        previewTable.hidden = true;
-        emptyPreview.hidden = false;
-        emptyPreview.textContent = "텍스트 형식을 확인하십시오.";
-        repeatedPanel.hidden = true;
-        setStatus(error.message, "error");
-      }
-    }
-
-    function downloadExcel() {
-      if (typeof XLSX === "undefined") {
-        setStatus(
-          "Excel 생성 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하십시오.",
-          "error"
-        );
-        return;
-      }
-
-      const rows = getPreviewRows();
-      if (rows.length === 0) {
-        setStatus("변환할 텍스트가 없습니다.", "error");
-        sourceText.focus();
-        return;
-      }
-
-      const worksheet = XLSX.utils.aoa_to_sheet([
-        ["학생코드", "sub1", "sub2"],
-        ...rows
-      ]);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-
-      const currentFileName = getCurrentDateTimeFileName();
-      const finalFileName = `${currentFileName}.xls`;
-      fileNameInput.value = currentFileName;
-
-      XLSX.writeFile(workbook, finalFileName, {
-        bookType: "biff8",
-        bookSST: true
-      });
-
-      setStatus(
-        `${rows.length.toLocaleString()}개 행을 ${finalFileName} 파일로 저장했습니다.`,
-        "success"
-      );
-    }
-
-    sourceText.addEventListener("input", () => {
-      syncTextareaEmptyState();
-      window.clearTimeout(previewTimer);
-      previewTimer = window.setTimeout(updatePreview, 120);
-    });
-
-    previewBody.addEventListener("input", (event) => {
-      const cell = event.target.closest('td[contenteditable="true"]');
-      if (!cell) {
-        return;
-      }
-
-      const rowIndex = Number(cell.dataset.rowIndex);
-      const columnIndex = Number(cell.dataset.columnIndex);
-      if (!Number.isInteger(rowIndex) || !Number.isInteger(columnIndex)) {
-        return;
-      }
-
-      previewRows[rowIndex][columnIndex] = cell.innerText.replace(/\r\n/g, "\n");
-      setStatus(
-        `${previewRows.length.toLocaleString()}개 행을 편집 중입니다. 다운로드 파일에 현재 수정 내용이 반영됩니다.`,
-        "success"
-      );
-    });
-
-    previewBody.addEventListener("paste", (event) => {
-      const cell = event.target.closest('td[contenteditable="true"]');
-      if (!cell) {
-        return;
-      }
-
-      event.preventDefault();
-      const text = event.clipboardData.getData("text/plain");
-      document.execCommand("insertText", false, text);
-    });
-
-    repeatedPhraseSelect.addEventListener("change", () => {
-      window.clearTimeout(repeatedReplaceTimer);
-      selectRepeatedPhrase(Number(repeatedPhraseSelect.value));
-    });
-
-    repeatedTextEditor.addEventListener("input", () => {
-      window.clearTimeout(repeatedReplaceTimer);
-      repeatedReplaceTimer = window.setTimeout(() => {
-        replaceRepeatedText(repeatedTextEditor.value);
-      }, 300);
-    });
-
-    redetectButton.addEventListener("click", () => {
-      refreshRepeatedPhrases();
-      if (repeatedPhrases.length > 0) {
-        setStatus(
-          `현재 미리보기에서 반복 문구 ${repeatedPhrases.length}개를 다시 찾았습니다.`,
-          "success"
-        );
-      } else {
-        setStatus("현재 미리보기에서 반복되는 긴 문구를 찾지 못했습니다.");
-      }
-    });
-
-    downloadButton.addEventListener("click", downloadExcel);
-
-    clearButton.addEventListener("click", () => {
-      sourceText.value = "";
-      fileNameInput.value = "";
-      previewRows = [];
-      repeatedPhrases = [];
-      activeRepeatedPhrase = null;
-      updatePreview();
-      sourceText.focus();
-    });
-
-    syncTextareaEmptyState();
-    updatePreview();
-  </script>
+<main>
+<h1>캔비 문자툴</h1>
+<section class="panel">
+<div class="textarea-wrap is-empty" id="textareaWrap">
+<textarea
+id="sourceText"
+spellcheck="false"
+aria-label="여기에 붙여넣기"
+></textarea>
+<div class="paste-guide" aria-hidden="true">여기에 붙여넣기</div>
+</div>
+<div class="options">
+<label>
+파일 이름
+<input
+id="fileName"
+type="text"
+placeholder="다운로드할 때 자동 생성"
+readonly
+/>
+</label>
+<button id="downloadButton" type="button">Excel 다운로드</button>
+<button id="clearButton" type="button">내용 비우기</button>
+</div>
+<p id="status" class="status">텍스트를 붙여 넣으십시오.</p>
+<section id="repeatedPanel" class="repeated-panel" hidden>
+<div class="repeated-heading">
+<h2>반복 문구 일괄 수정</h2>
+<button id="redetectButton" type="button">반복 문구 다시 찾기</button>
+</div>
+<textarea
+id="repeatedTextEditor"
+spellcheck="false"
+aria-label="반복 문구 일괄 편집"
+></textarea>
+</section>
+<div class="preview-wrap" id="previewWrap">
+<div id="emptyPreview" class="empty">미리보기가 여기에 표시됩니다.</div>
+<table id="previewTable" hidden>
+<thead>
+<tr>
+<th>학생코드</th>
+<th>sub1</th>
+<th>sub2</th>
+</tr>
+</thead>
+<tbody id="previewBody"></tbody>
+</table>
+</div>
+</section>
+</main>
+<script>
+const textareaWrap = document.getElementById("textareaWrap");
+const sourceText = document.getElementById("sourceText");
+const fileNameInput = document.getElementById("fileName");
+const downloadButton = document.getElementById("downloadButton");
+const clearButton = document.getElementById("clearButton");
+const statusElement = document.getElementById("status");
+const previewWrap = document.getElementById("previewWrap");
+const previewTable = document.getElementById("previewTable");
+const previewBody = document.getElementById("previewBody");
+const emptyPreview = document.getElementById("emptyPreview");
+const repeatedPanel = document.getElementById("repeatedPanel");
+const repeatedTextEditor = document.getElementById("repeatedTextEditor");
+const redetectButton = document.getElementById("redetectButton");
+const MIN_REPEATED_TEXT_LENGTH = 24;
+let previewRows = [];
+let activeRepeatedPhrase = "";
+let previewTimer;
+let repeatedReplaceTimer;
+function syncTextareaEmptyState() {
+textareaWrap.classList.toggle("is-empty", sourceText.value.length === 0);
+}
+function getCurrentDateTimeFileName() {
+const now = new Date();
+const pad = (number) => String(number).padStart(2, "0");
+return (
+now.getFullYear() +
+pad(now.getMonth() + 1) +
+pad(now.getDate()) +
+"_" +
+pad(now.getHours()) +
+pad(now.getMinutes()) +
+pad(now.getSeconds())
+);
+}
+function parseTabSeparatedText(rawText) {
+const text = rawText.replace(/^\uFEFF/, "");
+const rows = [];
+let row = [];
+let field = "";
+let inQuotes = false;
+for (let i = 0; i < text.length; i += 1) {
+const startsNewStudentRecord =
+i > 0 &&
+/^CB\d{8}\t/.test(text.slice(i)) &&
+(row.length > 0 || field.length > 0);
+if (startsNewStudentRecord) {
+row.push(field);
+rows.push(row);
+row = [];
+field = "";
+inQuotes = false;
+}
+const char = text[i];
+if (inQuotes) {
+if (char === '"') {
+if (text[i + 1] === '"') {
+field += '"';
+i += 1;
+} else {
+inQuotes = false;
+}
+} else {
+field += char;
+}
+continue;
+}
+if (char === '"' && field.length === 0) {
+inQuotes = true;
+} else if (char === "\t") {
+row.push(field);
+field = "";
+} else if (char === "\r" || char === "\n") {
+if (char === "\r" && text[i + 1] === "\n") {
+i += 1;
+}
+row.push(field);
+rows.push(row);
+row = [];
+field = "";
+} else {
+field += char;
+}
+}
+if (inQuotes) {
+throw new Error("닫히지 않은 큰따옴표가 있습니다.");
+}
+row.push(field);
+rows.push(row);
+return rows.filter((currentRow) =>
+currentRow.some((cell) => cell !== "")
+);
+}
+function normalizeRows(rows) {
+return rows.map((row) => [
+row[0] ?? "",
+row[1] ?? "",
+row[2] ?? ""
+]);
+}
+function getPreviewRows() {
+return previewRows.map((row) => [...row]);
+}
+function setStatus(message, type = "") {
+statusElement.textContent = message;
+statusElement.className = `status ${type}`.trim();
+}
+function renderPreviewTable() {
+const previousScrollTop = previewWrap.scrollTop;
+const previousScrollLeft = previewWrap.scrollLeft;
+const fragment = document.createDocumentFragment();
+previewBody.replaceChildren();
+previewRows.forEach((row, rowIndex) => {
+const tr = document.createElement("tr");
+row.forEach((value, columnIndex) => {
+const td = document.createElement("td");
+td.textContent = value;
+td.dataset.rowIndex = String(rowIndex);
+td.dataset.columnIndex = String(columnIndex);
+if (columnIndex === 0) {
+td.className = "student-code";
+} else {
+td.contentEditable = "true";
+td.spellcheck = false;
+td.setAttribute(
+"aria-label",
+`${rowIndex + 1}행 ${columnIndex + 1}열 편집`
+);
+}
+tr.appendChild(td);
+});
+fragment.appendChild(tr);
+});
+previewBody.appendChild(fragment);
+previewTable.hidden = previewRows.length === 0;
+emptyPreview.hidden = previewRows.length > 0;
+requestAnimationFrame(() => {
+previewWrap.scrollTop = previousScrollTop;
+previewWrap.scrollLeft = previousScrollLeft;
+});
+}
+function cleanCommonPhrase(rawPhrase) {
+let phrase = rawPhrase.trim();
+if (!phrase) {
+return "";
+}
+const lastBoundaryIndex = Math.max(
+phrase.lastIndexOf("\n"),
+phrase.lastIndexOf("."),
+phrase.lastIndexOf("!"),
+phrase.lastIndexOf("?")
+);
+const trailingFragment = phrase.slice(lastBoundaryIndex + 1);
+if (
+lastBoundaryIndex >= 0 &&
+trailingFragment.length > 0 &&
+trailingFragment.length < 18 &&
+!/[.!?]$/.test(phrase)
+) {
+phrase = phrase.slice(0, lastBoundaryIndex + 1).trim();
+}
+return phrase;
+}
+function findCommonSubstringOfLength(texts, length) {
+if (length <= 0 || texts.length < 2) {
+return "";
+}
+const shortestText = texts.reduce((shortest, text) =>
+text.length < shortest.length ? text : shortest
+);
+const otherTexts = texts.filter((text) => text !== shortestText);
+const candidates = new Set();
+for (let index = 0; index <= shortestText.length - length; index += 1) {
+candidates.add(shortestText.slice(index, index + length));
+}
+for (const text of otherTexts) {
+for (const candidate of [...candidates]) {
+if (!text.includes(candidate)) {
+candidates.delete(candidate);
+}
+}
+if (candidates.size === 0) {
+return "";
+}
+}
+return candidates.values().next().value ?? "";
+}
+function findLongestCommonSubstring(texts) {
+if (texts.length < 2) {
+return "";
+}
+const shortestLength = Math.min(...texts.map((text) => text.length));
+let low = MIN_REPEATED_TEXT_LENGTH;
+let high = shortestLength;
+let best = "";
+while (low <= high) {
+const middle = Math.floor((low + high) / 2);
+const candidate = findCommonSubstringOfLength(texts, middle);
+if (candidate) {
+best = candidate;
+low = middle + 1;
+} else {
+high = middle - 1;
+}
+}
+return cleanCommonPhrase(best);
+}
+function detectOverallRepeatedPhrase() {
+const candidates = [];
+[1, 2].forEach((columnIndex) => {
+const texts = previewRows
+.map((row) => String(row[columnIndex] ?? ""))
+.filter((text) => text.length >= MIN_REPEATED_TEXT_LENGTH);
+if (texts.length < 2) {
+return;
+}
+const phrase = findLongestCommonSubstring(texts);
+if (phrase.length >= MIN_REPEATED_TEXT_LENGTH) {
+candidates.push({ phrase, columnIndex, cellCount: texts.length });
+}
+});
+candidates.sort((first, second) => {
+if (second.cellCount !== first.cellCount) {
+return second.cellCount - first.cellCount;
+}
+return second.phrase.length - first.phrase.length;
+});
+return candidates[0]?.phrase ?? "";
+}
+function hideRepeatedPanel() {
+activeRepeatedPhrase = "";
+repeatedTextEditor.value = "";
+repeatedPanel.hidden = true;
+}
+function detectAndRenderRepeatedPhrase() {
+const phrase = detectOverallRepeatedPhrase();
+if (!phrase) {
+hideRepeatedPanel();
+return;
+}
+activeRepeatedPhrase = phrase;
+repeatedTextEditor.value = phrase;
+repeatedPanel.hidden = false;
+}
+function applyRepeatedTextChange() {
+const replacement = repeatedTextEditor.value.replace(/\r\n/g, "\n");
+if (!activeRepeatedPhrase || !replacement) {
+return;
+}
+let changedCells = 0;
+previewRows.forEach((row) => {
+[1, 2].forEach((columnIndex) => {
+const currentText = String(row[columnIndex] ?? "");
+if (!currentText.includes(activeRepeatedPhrase)) {
+return;
+}
+row[columnIndex] = currentText.split(activeRepeatedPhrase).join(replacement);
+changedCells += 1;
+});
+});
+if (changedCells === 0) {
+return;
+}
+activeRepeatedPhrase = replacement;
+renderPreviewTable();
+setStatus(
+`${previewRows.length.toLocaleString()}개 행을 편집 중입니다. 다운로드 파일에 현재 수정 내용이 반영됩니다.`,
+"success"
+);
+}
+function updatePreview() {
+syncTextareaEmptyState();
+if (!sourceText.value.trim()) {
+previewRows = [];
+renderPreviewTable();
+hideRepeatedPanel();
+emptyPreview.textContent = "미리보기가 여기에 표시됩니다.";
+setStatus("텍스트를 붙여 넣으십시오.");
+return;
+}
+try {
+const originalRows = parseTabSeparatedText(sourceText.value);
+previewRows = normalizeRows(originalRows);
+renderPreviewTable();
+detectAndRenderRepeatedPhrase();
+const extraColumnRows = originalRows.filter(
+(row) => row.length > 3
+).length;
+let message = `${previewRows.length.toLocaleString()}개 행을 인식했습니다. 미리보기의 sub1·sub2를 직접 수정할 수 있습니다.`;
+if (extraColumnRows > 0) {
+message += " A~C열 뒤의 추가 값은 저장하지 않습니다.";
+}
+setStatus(message, "success");
+} catch (error) {
+previewRows = [];
+renderPreviewTable();
+hideRepeatedPanel();
+emptyPreview.hidden = false;
+emptyPreview.textContent = "텍스트 형식을 확인하십시오.";
+setStatus(error.message, "error");
+}
+}
+function downloadExcel() {
+if (typeof XLSX === "undefined") {
+setStatus(
+"Excel 생성 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하십시오.",
+"error"
+);
+return;
+}
+const rows = getPreviewRows();
+if (rows.length === 0) {
+setStatus("변환할 텍스트가 없습니다.", "error");
+sourceText.focus();
+return;
+}
+const worksheet = XLSX.utils.aoa_to_sheet([
+["학생코드", "sub1", "sub2"],
+...rows
+]);
+const workbook = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+const currentFileName = getCurrentDateTimeFileName();
+const finalFileName = `${currentFileName}.xls`;
+fileNameInput.value = currentFileName;
+XLSX.writeFile(workbook, finalFileName, {
+bookType: "biff8",
+bookSST: true
+});
+setStatus(
+`${rows.length.toLocaleString()}개 행을 ${finalFileName} 파일로 저장했습니다.`,
+"success"
+);
+}
+sourceText.addEventListener("input", () => {
+syncTextareaEmptyState();
+window.clearTimeout(previewTimer);
+previewTimer = window.setTimeout(updatePreview, 120);
+});
+repeatedTextEditor.addEventListener("input", () => {
+window.clearTimeout(repeatedReplaceTimer);
+repeatedReplaceTimer = window.setTimeout(applyRepeatedTextChange, 300);
+});
+redetectButton.addEventListener("click", () => {
+detectAndRenderRepeatedPhrase();
+repeatedTextEditor.focus();
+});
+previewBody.addEventListener("input", (event) => {
+const cell = event.target.closest('td[contenteditable="true"]');
+if (!cell) {
+return;
+}
+const rowIndex = Number(cell.dataset.rowIndex);
+const columnIndex = Number(cell.dataset.columnIndex);
+if (
+!Number.isInteger(rowIndex) ||
+!Number.isInteger(columnIndex) ||
+columnIndex === 0
+) {
+return;
+}
+previewRows[rowIndex][columnIndex] = cell.innerText.replace(/\r\n/g, "\n");
+setStatus(
+`${previewRows.length.toLocaleString()}개 행을 편집 중입니다. 다운로드 파일에 현재 수정 내용이 반영됩니다.`,
+"success"
+);
+});
+previewBody.addEventListener("paste", (event) => {
+const cell = event.target.closest('td[contenteditable="true"]');
+if (!cell) {
+return;
+}
+event.preventDefault();
+const text = event.clipboardData.getData("text/plain");
+document.execCommand("insertText", false, text);
+});
+downloadButton.addEventListener("click", downloadExcel);
+clearButton.addEventListener("click", () => {
+sourceText.value = "";
+fileNameInput.value = "";
+previewRows = [];
+window.clearTimeout(previewTimer);
+window.clearTimeout(repeatedReplaceTimer);
+updatePreview();
+sourceText.focus();
+});
+syncTextareaEmptyState();
+updatePreview();
+</script>
 </body>
 </html>
