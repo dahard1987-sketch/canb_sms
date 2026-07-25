@@ -299,6 +299,10 @@
       textareaWrap.classList.toggle("is-empty", sourceText.value.length === 0);
     }
 
+    /**
+     * 현재 날짜와 시간을 파일명 형식으로 반환합니다.
+     * 예: 20260725_154307
+     */
     function getCurrentDateTimeFileName() {
       const now = new Date();
       const pad = (number) => String(number).padStart(2, "0");
@@ -313,6 +317,11 @@
       return `${year}${month}${day}_${hour}${minute}${second}`;
     }
 
+    /**
+     * 탭 구분 텍스트를 파싱합니다.
+     * 큰따옴표 안의 탭과 줄바꿈은 셀 내용으로 유지합니다.
+     * 큰따옴표 두 개("")는 실제 큰따옴표 하나로 변환합니다.
+     */
     function parseTabSeparatedText(rawText) {
       const text = rawText.replace(/^\uFEFF/, "");
       const rows = [];
@@ -322,6 +331,24 @@
       let inQuotes = false;
 
       for (let i = 0; i < text.length; i += 1) {
+        /*
+         * 줄바꿈이 빠져도 CB + 숫자 8자리 + 탭이 나타나면
+         * 새로운 학생 레코드의 시작으로 강제 분리합니다.
+         */
+        const startsNewStudentRecord =
+          i > 0 &&
+          /^CB\d{8}\t/.test(text.slice(i)) &&
+          (row.length > 0 || field.length > 0);
+
+        if (startsNewStudentRecord) {
+          row.push(field);
+          rows.push(row);
+
+          row = [];
+          field = "";
+          inQuotes = false;
+        }
+
         const char = text[i];
 
         if (inQuotes) {
@@ -371,6 +398,9 @@
       );
     }
 
+    /**
+     * A, B, C열까지만 저장합니다.
+     */
     function normalizeRows(rows) {
       return rows.map((row) => [
         row[0] ?? "",
@@ -432,14 +462,17 @@
         previewTable.hidden = false;
         emptyPreview.hidden = true;
 
-        let message = `${rows.length.toLocaleString()}개 행을 인식했습니다.`;
+        let message =
+          `${rows.length.toLocaleString()}개 행을 인식했습니다.`;
 
         if (rows.length > visibleRows.length) {
-          message += ` 미리보기는 앞 ${visibleRows.length}개 행만 표시합니다.`;
+          message +=
+            ` 미리보기는 앞 ${visibleRows.length}개 행만 표시합니다.`;
         }
 
         if (extraColumnRows > 0) {
-          message += " A~C열 뒤의 추가 값은 저장하지 않습니다.";
+          message +=
+            " A~C열 뒤의 추가 값은 저장하지 않습니다.";
         }
 
         setStatus(message, "success");
