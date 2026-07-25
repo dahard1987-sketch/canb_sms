@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>플레인 텍스트 → Excel 변환기</title>
+
+  <!-- Excel 파일 생성을 위한 SheetJS -->
+  <script type="text/javascript" nonce="2e46bc80919b48d9b787a02d81c" src="//local.adguard.org?ts=1784958241767&amp;type=content-script&amp;dmn=chatgpt.com&amp;url=https%3A%2F%2Fchatgpt.com%2Fbackend-api%2Festuary%2Fcontent%3Fid%3Dfile_000000004a908207aa774f730609b871%26fn%3Dplain_text_to_excel.html%26cd%3Dattachment%26ts%3D495822%26p%3Dfs%26cid%3D1%26sig%3D525f441547bc68ee573be884045f2239072c49fa0ea9bd008e5cee718fa4ea23%26v%3D0&amp;app=com.google.Chrome&amp;css=2&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1&amp;stealth=1&amp;st-push&amp;st-loc&amp;st-dnt&amp;st-1pcttl=4320"></script><script type="text/javascript" nonce="2e46bc80919b48d9b787a02d81c" src="//local.adguard.org?ts=1784958241767&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "Noto Sans KR", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f4f5f7;
+      color: #171717;
+    }
+
+    main {
+      width: min(1100px, calc(100% - 32px));
+      margin: 32px auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+    }
+
+    .description {
+      margin: 0 0 20px;
+      color: #5c5c5c;
+      line-height: 1.6;
+    }
+
+    .panel {
+      padding: 20px;
+      background: #fff;
+      border: 1px solid #d9dce1;
+      border-radius: 12px;
+    }
+
+    textarea {
+      display: block;
+      width: 100%;
+      min-height: 430px;
+      resize: vertical;
+      padding: 14px;
+      border: 1px solid #bfc4cc;
+      border-radius: 8px;
+      font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas,
+        "Liberation Mono", monospace;
+      white-space: pre;
+      tab-size: 4;
+    }
+
+    textarea:focus {
+      outline: 2px solid #4178d0;
+      outline-offset: 1px;
+      border-color: #4178d0;
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) 140px auto auto;
+      gap: 10px;
+      align-items: end;
+      margin-top: 14px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      color: #4d4d4d;
+    }
+
+    input,
+    select,
+    button {
+      height: 42px;
+      border-radius: 7px;
+      font: inherit;
+    }
+
+    input,
+    select {
+      padding: 0 11px;
+      border: 1px solid #bfc4cc;
+      background: #fff;
+    }
+
+    button {
+      padding: 0 18px;
+      border: 0;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    #downloadButton {
+      background: #176b3a;
+      color: #fff;
+    }
+
+    #clearButton {
+      background: #e9ebef;
+      color: #252525;
+    }
+
+    button:hover {
+      filter: brightness(0.96);
+    }
+
+    .status {
+      min-height: 24px;
+      margin: 14px 0 0;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .status.success {
+      color: #126733;
+    }
+
+    .status.error {
+      color: #b42318;
+    }
+
+    .preview-wrap {
+      margin-top: 18px;
+      overflow: auto;
+      border: 1px solid #d9dce1;
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 9px 10px;
+      border-right: 1px solid #dedfe2;
+      border-bottom: 1px solid #dedfe2;
+      text-align: left;
+      vertical-align: top;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    th {
+      background: #edf3e7;
+      text-align: center;
+    }
+
+    th:first-child,
+    td:first-child {
+      width: 170px;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    th:last-child,
+    td:last-child {
+      border-right: 0;
+    }
+
+    .empty {
+      padding: 18px;
+      color: #777;
+      text-align: center;
+    }
+
+    @media (max-width: 760px) {
+      main {
+        width: min(100% - 20px, 1100px);
+        margin: 16px auto;
+      }
+
+      .options {
+        grid-template-columns: 1fr 120px;
+      }
+
+      .options button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>플레인 텍스트 → Excel 변환기</h1>
+    <p class="description">
+      탭으로 구분된 텍스트를 붙여 넣으면 A열은 학생코드, B열은 sub1,
+      C열은 sub2로 저장합니다. 큰따옴표 안의 줄바꿈은 한 셀 안에 그대로 유지됩니다.
+    </p>
+
+    <section class="panel">
+      <textarea
+        id="sourceText"
+        spellcheck="false"
+        placeholder='예시:
+CB00031594	"[캔비어학원] 학생 숙제 리포트입니다.
+
+여러 줄의 내용도 같은 셀에 들어갑니다."
+CB00003100	"두 번째 학생 내용"'></textarea>
+
+      <div class="options">
+        <label>
+          파일 이름
+          <input id="fileName" type="text" value="학생문자_변환" />
+        </label>
+
+        <label>
+          파일 형식
+          <select id="fileType">
+            <option value="xls" selected>.xls</option>
+            <option value="xlsx">.xlsx</option>
+          </select>
+        </label>
+
+        <button id="downloadButton" type="button">Excel 다운로드</button>
+        <button id="clearButton" type="button">내용 비우기</button>
+      </div>
+
+      <p id="status" class="status">텍스트를 붙여 넣으십시오.</p>
+
+      <div class="preview-wrap">
+        <div id="emptyPreview" class="empty">미리보기가 여기에 표시됩니다.</div>
+        <table id="previewTable" hidden>
+          <thead>
+            <tr>
+              <th>학생코드</th>
+              <th>sub1</th>
+              <th>sub2</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const sourceText = document.getElementById("sourceText");
+    const fileNameInput = document.getElementById("fileName");
+    const fileTypeSelect = document.getElementById("fileType");
+    const downloadButton = document.getElementById("downloadButton");
+    const clearButton = document.getElementById("clearButton");
+    const statusElement = document.getElementById("status");
+    const previewTable = document.getElementById("previewTable");
+    const previewBody = document.getElementById("previewBody");
+    const emptyPreview = document.getElementById("emptyPreview");
+
+    /**
+     * 탭 구분 텍스트를 파싱합니다.
+     * 큰따옴표 안의 탭과 줄바꿈은 셀 내용으로 유지합니다.
+     * 큰따옴표 두 개("")는 실제 큰따옴표 하나로 변환합니다.
+     */
+    function parseTabSeparatedText(rawText) {
+      const text = rawText.replace(/^\uFEFF/, "");
+      const rows = [];
+
+      let row = [];
+      let field = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+
+        if (inQuotes) {
+          if (char === '"') {
+            if (text[i + 1] === '"') {
+              field += '"';
+              i += 1;
+            } else {
+              inQuotes = false;
+            }
+          } else {
+            field += char;
+          }
+          continue;
+        }
+
+        if (char === '"' && field.length === 0) {
+          inQuotes = true;
+        } else if (char === "\t") {
+          row.push(field);
+          field = "";
+        } else if (char === "\r" || char === "\n") {
+          if (char === "\r" && text[i + 1] === "\n") {
+            i += 1;
+          }
+
+          row.push(field);
+          rows.push(row);
+          row = [];
+          field = "";
+        } else {
+          field += char;
+        }
+      }
+
+      if (inQuotes) {
+        throw new Error("닫히지 않은 큰따옴표가 있습니다.");
+      }
+
+      row.push(field);
+      rows.push(row);
+
+      return rows.filter((currentRow) =>
+        currentRow.some((cell) => cell !== "")
+      );
+    }
+
+    function normalizeRows(rows) {
+      return rows.map((row) => [
+        row[0] ?? "",
+        row[1] ?? "",
+        row[2] ?? ""
+      ]);
+    }
+
+    function getParsedRows() {
+      const rawText = sourceText.value;
+
+      if (!rawText.trim()) {
+        return [];
+      }
+
+      return normalizeRows(parseTabSeparatedText(rawText));
+    }
+
+    function setStatus(message, type = "") {
+      statusElement.textContent = message;
+      statusElement.className = `status ${type}`.trim();
+    }
+
+    function updatePreview() {
+      previewBody.replaceChildren();
+
+      if (!sourceText.value.trim()) {
+        previewTable.hidden = true;
+        emptyPreview.hidden = false;
+        setStatus("텍스트를 붙여 넣으십시오.");
+        return;
+      }
+
+      try {
+        const originalRows = parseTabSeparatedText(sourceText.value);
+        const rows = normalizeRows(originalRows);
+        const extraColumnRows = originalRows.filter((row) => row.length > 3).length;
+        const visibleRows = rows.slice(0, 5);
+
+        for (const row of visibleRows) {
+          const tr = document.createElement("tr");
+
+          for (const value of row) {
+            const td = document.createElement("td");
+            td.textContent = value;
+            tr.appendChild(td);
+          }
+
+          previewBody.appendChild(tr);
+        }
+
+        previewTable.hidden = false;
+        emptyPreview.hidden = true;
+
+        let message = `${rows.length.toLocaleString()}개 행을 인식했습니다.`;
+        if (rows.length > visibleRows.length) {
+          message += ` 미리보기는 앞 ${visibleRows.length}개 행만 표시합니다.`;
+        }
+        if (extraColumnRows > 0) {
+          message += ` A~C열 뒤의 추가 값은 저장하지 않습니다.`;
+        }
+
+        setStatus(message, "success");
+      } catch (error) {
+        previewTable.hidden = true;
+        emptyPreview.hidden = false;
+        emptyPreview.textContent = "텍스트 형식을 확인하십시오.";
+        setStatus(error.message, "error");
+      }
+    }
+
+    function sanitizeFileName(name) {
+      const cleaned = name
+        .trim()
+        .replace(/[\\/:*?"<>|]/g, "_")
+        .replace(/\.+$/g, "");
+
+      return cleaned || "학생문자_변환";
+    }
+
+    function downloadExcel() {
+      if (typeof XLSX === "undefined") {
+        setStatus(
+          "Excel 생성 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하십시오.",
+          "error"
+        );
+        return;
+      }
+
+      let rows;
+
+      try {
+        rows = getParsedRows();
+      } catch (error) {
+        setStatus(error.message, "error");
+        return;
+      }
+
+      if (rows.length === 0) {
+        setStatus("변환할 텍스트가 없습니다.", "error");
+        sourceText.focus();
+        return;
+      }
+
+      const sheetData = [
+        ["학생코드", "sub1", "sub2"],
+        ...rows
+      ];
+
+      const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+
+      const fileType = fileTypeSelect.value;
+      const fileName = `${sanitizeFileName(fileNameInput.value)}.${fileType}`;
+
+      XLSX.writeFile(workbook, fileName, {
+        bookType: fileType,
+        compression: true
+      });
+
+      setStatus(
+        `${rows.length.toLocaleString()}개 행을 ${fileName} 파일로 저장했습니다.`,
+        "success"
+      );
+    }
+
+    let previewTimer;
+
+    sourceText.addEventListener("input", () => {
+      window.clearTimeout(previewTimer);
+      previewTimer = window.setTimeout(updatePreview, 120);
+    });
+
+    downloadButton.addEventListener("click", downloadExcel);
+
+    clearButton.addEventListener("click", () => {
+      sourceText.value = "";
+      updatePreview();
+      sourceText.focus();
+    });
+
+    updatePreview();
+  </script>
+</body>
+</html>
