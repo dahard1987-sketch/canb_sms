@@ -204,6 +204,32 @@
       border-right: 0;
     }
 
+    td[contenteditable="true"] {
+      min-height: 42px;
+      background: #fff;
+      cursor: text;
+      transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    td[contenteditable="true"]:hover {
+      background: #f8faf8;
+    }
+
+    td[contenteditable="true"]:focus {
+      position: relative;
+      z-index: 2;
+      outline: 2px solid #176b3a;
+      outline-offset: -2px;
+      background: #fff;
+      box-shadow: inset 0 0 0 1px #176b3a;
+    }
+
+    td[data-column-index="2"]:empty::before {
+      content: "클릭하여 입력";
+      color: #a1a7ad;
+      pointer-events: none;
+    }
+
     .empty {
       padding: 18px;
       color: #777;
@@ -291,6 +317,8 @@
     const previewTable = document.getElementById("previewTable");
     const previewBody = document.getElementById("previewBody");
     const emptyPreview = document.getElementById("emptyPreview");
+
+    let previewRows = [];
 
     function syncTextareaEmptyState() {
       textareaWrap.classList.toggle("is-empty", sourceText.value.length === 0);
@@ -388,12 +416,59 @@
       ]);
     }
 
-    function getParsedRows() {
-      if (!sourceText.value.trim()) {
-        return [];
+    function getDownloadRows() {
+      return previewRows.map((row) => [...row]);
+    }
+
+    function getEditableCellValue(cell) {
+      return cell.innerText.replace(/\r\n?/g, "\n");
+    }
+
+    function insertPlainTextAtCursor(text) {
+      const selection = window.getSelection();
+
+      if (!selection || selection.rangeCount === 0) {
+        return;
       }
 
-      return normalizeRows(parseTabSeparatedText(sourceText.value));
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+
+      const textNode = document.createTextNode(text);
+      range.insertNode(textNode);
+      range.setStartAfter(textNode);
+      range.collapse(true);
+
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    function renderPreviewRows() {
+      previewBody.replaceChildren();
+      const fragment = document.createDocumentFragment();
+
+      previewRows.forEach((row, rowIndex) => {
+        const tr = document.createElement("tr");
+
+        row.forEach((value, columnIndex) => {
+          const td = document.createElement("td");
+          td.textContent = value;
+          td.contentEditable = "true";
+          td.spellcheck = columnIndex !== 0;
+          td.dataset.rowIndex = String(rowIndex);
+          td.dataset.columnIndex = String(columnIndex);
+          td.setAttribute("role", "textbox");
+          td.setAttribute(
+            "aria-label",
+            `${rowIndex + 1}행 ${columnIndex + 1}열 편집`
+          );
+          tr.appendChild(td);
+        });
+
+        fragment.appendChild(tr);
+      });
+
+      previewBody.appendChild(fragment);
     }
 
     function setStatus(message, type = "") {
@@ -402,10 +477,11 @@
     }
 
     function updatePreview() {
-      previewBody.replaceChildren();
       syncTextareaEmptyState();
 
       if (!sourceText.value.trim()) {
+        previewRows = [];
+        previewBody.replaceChildren();
         previewTable.hidden = true;
         emptyPreview.hidden = false;
         emptyPreview.textContent = "미리보기가 여기에 표시됩니다.";
@@ -415,30 +491,18 @@
 
       try {
         const originalRows = parseTabSeparatedText(sourceText.value);
-        const rows = normalizeRows(originalRows);
+        previewRows = normalizeRows(originalRows);
         const extraColumnRows = originalRows.filter(
           (row) => row.length > 3
         ).length;
 
-        const fragment = document.createDocumentFragment();
-
-        for (const row of rows) {
-          const tr = document.createElement("tr");
-
-          for (const value of row) {
-            const td = document.createElement("td");
-            td.textContent = value;
-            tr.appendChild(td);
-          }
-
-          fragment.appendChild(tr);
-        }
-
-        previewBody.appendChild(fragment);
+        renderPreviewRows();
         previewTable.hidden = false;
         emptyPreview.hidden = true;
 
-        let message = `${rows.length.toLocaleString()}개 행을 인식했습니다.`;
+        let message =
+          `${previewRows.length.toLocaleString()}개 행을 인식했습니다. ` +
+          "미리보기 셀을 직접 수정할 수 있으며, 수정 내용은 다운로드에 반영됩니다.";
 
         if (extraColumnRows > 0) {
           message += " A~C열 뒤의 추가 값은 저장하지 않습니다.";
@@ -446,6 +510,8 @@
 
         setStatus(message, "success");
       } catch (error) {
+        previewRows = [];
+        previewBody.replaceChildren();
         previewTable.hidden = true;
         emptyPreview.hidden = false;
         emptyPreview.textContent = "텍스트 형식을 확인하십시오.";
@@ -462,14 +528,7 @@
         return;
       }
 
-      let rows;
-
-      try {
-        rows = getParsedRows();
-      } catch (error) {
-        setStatus(error.message, "error");
-        return;
-      }
+      const rows = getDownloadRows();
 
       if (rows.length === 0) {
         setStatus("변환할 텍스트가 없습니다.", "error");
@@ -509,11 +568,46 @@
       previewTimer = window.setTimeout(updatePreview, 120);
     });
 
+    previewBody.addEventListener("input", (event) => {
+      const cell = event.target.closest('td[contenteditable="true"]');
+
+      if (!cell) {
+        return;
+      }
+
+      const rowIndex = Number(cell.dataset.rowIndex);
+      const columnIndex = Number(cell.dataset.columnIndex);
+
+      if (!Number.isInteger(rowIndex) || !Number.isInteger(columnIndex)) {
+        return;
+      }
+
+      previewRows[rowIndex][columnIndex] = getEditableCellValue(cell);
+      setStatus(
+        `${previewRows.length.toLocaleString()}개 행이 준비되었습니다. ` +
+          "미리보기에서 수정한 내용이 다운로드에 반영됩니다.",
+        "success"
+      );
+    });
+
+    previewBody.addEventListener("paste", (event) => {
+      const cell = event.target.closest('td[contenteditable="true"]');
+
+      if (!cell) {
+        return;
+      }
+
+      event.preventDefault();
+      insertPlainTextAtCursor(event.clipboardData.getData("text/plain"));
+      cell.dispatchEvent(new InputEvent("input", { bubbles: true }));
+    });
+
     downloadButton.addEventListener("click", downloadExcel);
 
     clearButton.addEventListener("click", () => {
       sourceText.value = "";
       fileNameInput.value = "";
+      previewRows = [];
       updatePreview();
       sourceText.focus();
     });
