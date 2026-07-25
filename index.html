@@ -1,4 +1,6 @@
-<!DOCTYPE html>
+from pathlib import Path
+
+html = r'''<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
@@ -247,18 +249,11 @@ CB00003100	"두 번째 학생 내용"'
           </select>
         </label>
 
-        <button id="downloadButton" type="button">
-          Excel 다운로드
-        </button>
-
-        <button id="clearButton" type="button">
-          내용 비우기
-        </button>
+        <button id="downloadButton" type="button">Excel 다운로드</button>
+        <button id="clearButton" type="button">내용 비우기</button>
       </div>
 
-      <p id="status" class="status">
-        텍스트를 붙여 넣으십시오.
-      </p>
+      <p id="status" class="status">텍스트를 붙여 넣으십시오.</p>
 
       <div class="preview-wrap">
         <div id="emptyPreview" class="empty">
@@ -297,9 +292,7 @@ CB00003100	"두 번째 학생 내용"'
      */
     function getCurrentDateTimeFileName() {
       const now = new Date();
-
-      const pad = (number) =>
-        String(number).padStart(2, "0");
+      const pad = (number) => String(number).padStart(2, "0");
 
       const year = now.getFullYear();
       const month = pad(now.getMonth() + 1);
@@ -392,9 +385,7 @@ CB00003100	"두 번째 학생 내용"'
         return [];
       }
 
-      return normalizeRows(
-        parseTabSeparatedText(rawText)
-      );
+      return normalizeRows(parseTabSeparatedText(rawText));
     }
 
     function setStatus(message, type = "") {
@@ -408,17 +399,14 @@ CB00003100	"두 번째 학생 내용"'
       if (!sourceText.value.trim()) {
         previewTable.hidden = true;
         emptyPreview.hidden = false;
-        emptyPreview.textContent =
-          "미리보기가 여기에 표시됩니다.";
+        emptyPreview.textContent = "미리보기가 여기에 표시됩니다.";
 
         setStatus("텍스트를 붙여 넣으십시오.");
         return;
       }
 
       try {
-        const originalRows =
-          parseTabSeparatedText(sourceText.value);
-
+        const originalRows = parseTabSeparatedText(sourceText.value);
         const rows = normalizeRows(originalRows);
 
         const extraColumnRows = originalRows.filter(
@@ -459,8 +447,7 @@ CB00003100	"두 번째 학생 내용"'
       } catch (error) {
         previewTable.hidden = true;
         emptyPreview.hidden = false;
-        emptyPreview.textContent =
-          "텍스트 형식을 확인하십시오.";
+        emptyPreview.textContent = "텍스트 형식을 확인하십시오.";
 
         setStatus(error.message, "error");
       }
@@ -472,7 +459,6 @@ CB00003100	"두 번째 학생 내용"'
           "Excel 생성 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하십시오.",
           "error"
         );
-
         return;
       }
 
@@ -486,11 +472,7 @@ CB00003100	"두 번째 학생 내용"'
       }
 
       if (rows.length === 0) {
-        setStatus(
-          "변환할 텍스트가 없습니다.",
-          "error"
-        );
-
+        setStatus("변환할 텍스트가 없습니다.", "error");
         sourceText.focus();
         return;
       }
@@ -500,39 +482,38 @@ CB00003100	"두 번째 학생 내용"'
         ...rows
       ];
 
-      const worksheet =
-        XLSX.utils.aoa_to_sheet(sheetData);
+      const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+      const workbook = XLSX.utils.book_new();
 
-      const workbook =
-        XLSX.utils.book_new();
-
-      XLSX.utils.book_append_sheet(
-        workbook,
-        worksheet,
-        "Sheet1"
-      );
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
 
       const fileType = fileTypeSelect.value;
-
-      /*
-       * 다운로드 버튼을 누른 순간의
-       * 날짜와 시간을 파일명으로 생성합니다.
-       */
-      const currentFileName =
-        getCurrentDateTimeFileName();
+      const currentFileName = getCurrentDateTimeFileName();
+      const finalFileName = `${currentFileName}.${fileType}`;
 
       fileNameInput.value = currentFileName;
 
-      const finalFileName =
-        `${currentFileName}.${fileType}`;
+      /*
+       * 중요:
+       * .xls는 "xls"가 아니라 BIFF8 형식으로 명시하고,
+       * bookSST를 켜야 255자를 넘는 긴 문자열이 잘리지 않습니다.
+       */
+      const writeOptions =
+        fileType === "xls"
+          ? {
+              bookType: "biff8",
+              bookSST: true
+            }
+          : {
+              bookType: "xlsx",
+              bookSST: true,
+              compression: true
+            };
 
       XLSX.writeFile(
         workbook,
         finalFileName,
-        {
-          bookType: fileType,
-          compression: true
-        }
+        writeOptions
       );
 
       setStatus(
@@ -569,3 +550,9 @@ CB00003100	"두 번째 학생 내용"'
   </script>
 </body>
 </html>
+'''
+
+output = Path("/mnt/data/plain_text_to_excel_fixed.html")
+output.write_text(html, encoding="utf-8")
+
+print(f"Created: {output}")
