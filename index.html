@@ -640,10 +640,10 @@ const worksheet = XLSX.utils.aoa_to_sheet([
 const workbook = XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
 const currentFileName = getCurrentDateTimeFileName();
-const finalFileName = `${currentFileName}.xls`;
+const finalFileName = `${currentFileName}.xlsx`;
 fileNameInput.value = currentFileName;
 XLSX.writeFile(workbook, finalFileName, {
-bookType: "biff8",
+bookType: "xlsx",
 bookSST: true
 });
 setStatus(
